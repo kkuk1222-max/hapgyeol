@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>합! 결!</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 위쪽 막대: 제목, 힌트 주머니, 규칙, 소리 -->
+  <header class="topbar">
+    <h1 class="logo">합! 결!</h1>
+    <div class="top-right">
+      <span id="lifeStatus" class="life-status"></span>
+      <span id="hintStatus" class="hint-status"></span>
+      <button id="btnRules" class="btn-small">규칙</button>
+      <button id="btnSound" class="btn-small"></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- 화면 1: 단계 고르기 -->
+    <section id="screenSelect" class="screen card">
+      <div class="select-head">
+        <button id="btnPagePrev" class="btn-small" aria-label="이전 페이지">◀</button>
+        <span id="pageLabel" class="page-label"></span>
+        <button id="btnPageNext" class="btn-small" aria-label="다음 페이지">▶</button>
+      </div>
+      <div id="stageGrid" class="stage-grid"></div>
+      <div class="legend">
+        <span><i class="dot dot-clear"></i>깬 단계 (별은 남은 시간 기준)</span>
+        <span><i class="dot dot-current"></i>지금 도전할 단계</span>
+        <span><i class="dot dot-locked"></i>잠긴 단계</span>
+      </div>
+      <div class="think-row">
+        <h3>수학 생각해보기 <small>10단계를 깰 때마다 열려요. 맞히면 힌트 +5</small></h3>
+        <div id="thinkList" class="think-list"></div>
+      </div>
+      <div class="select-foot">
+        <button id="btnReport" class="btn-small">📋 성적표</button>
+        <button id="btnReset" class="btn-small btn-reset">초기화</button>
+      </div>
+    </section>
+
+    <!-- 화면 2: 게임 -->
+    <section id="screenGame" class="screen hidden">
+      <div class="game">
+        <div class="game-left card">
+          <div class="game-info">
+            <span id="stageLabel" class="stage-label"></span>
+            <span id="boardLabel" class="board-label"></span>
+            <span id="timeText" class="time-text"></span>
+          </div>
+          <div id="timeBarBg" class="timebar"><div id="timeBar" class="timebar-fill"></div></div>
+          <div class="board-wrap">
+            <div id="board" class="board"></div>
+            <div id="bigText" class="big-text"></div>
+          </div>
+        </div>
+        <div class="game-right">
+          <div id="msg" class="msg"></div>
+          <div class="found-box card">
+            <h3>찾은 합</h3>
+            <div id="foundList"></div>
+          </div>
+          <button id="btnHint" class="btn-hint">힌트 쓰기</button>
+          <button id="btnGyeol" class="btn-gyeol">결!</button>
+          <button id="btnQuit" class="btn-small btn-quit">단계 고르기로 나가기</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 겹쳐 뜨는 창: 규칙 설명, 클리어, 실패, 생각해보기 -->
+  <div id="overlay" class="overlay hidden">
+    <div id="overlayBox" class="overlay-box"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
