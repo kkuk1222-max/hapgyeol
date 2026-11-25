@@ -34,6 +34,15 @@ var BT = {
 };
 var BT_SAVE = 'hapgyeol-battle-v1';   // 이 크롬북이 들어가 있는 방 번호
 
+/* 선생님 화면 비밀번호 (2026-11-25). 비밀번호 자체는 적지 않고, 바꾼 값만 적어 둔다.
+   비밀번호를 바꾸려면 btPinHash('새 비밀번호')의 값을 BT_PIN_HASH에 넣는다 */
+var BT_PIN_HASH = 303083462;
+var BT_TEACHER_KEY = 'hapgyeol-teacher-v1';   // 이 기기에서 비밀번호를 맞게 넣었는지
+function btPinHash(pin) { return strHash('hapgyeol-teacher:' + pin, 1000000007); }
+function btTeacherOk() {
+  try { return localStorage.getItem(BT_TEACHER_KEY) === String(BT_PIN_HASH); } catch (e) { return false; }
+}
+
 var bt = {
   ok: false, db: null, offset: 0,
   // 학생
@@ -875,12 +884,39 @@ function btStuClick(e) {
 function btOpenTeacher() {
   if (!bt.ok) { alert('대결 모드는 인터넷과 링크(GitHub Pages)에서만 열려요.'); return; }
   if (typeof game !== 'undefined' && game && !game.over) return;
+  if (!btTeacherOk()) { btAskPin(); return; }   // 이 기기에서 처음이면 비밀번호 묻기
   stopRefill();
   closeOverlay();
   btTOff();
   bt.tview = 'list';
   showScreen('teacher');
   btTList();
+}
+
+/* 선생님 비밀번호 묻기. 맞게 넣으면 이 기기에서는 다시 묻지 않는다 */
+function btAskPin() {
+  openOverlay(
+    '<h2>선생님 확인</h2>' +
+    '<p class="ov-text">대결 방을 관리하는 선생님 화면이에요. 비밀번호를 넣어 주세요.</p>' +
+    '<div class="form-row"><label for="btPin">비밀번호</label><input id="btPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></div>' +
+    '<p class="msg bad" id="btPinMsg"></p>' +
+    '<div class="ov-buttons"><button id="btPinNo">닫기</button><div class="right"><button id="btPinOk" class="btn-main">확인</button></div></div>'
+  );
+  $('btPin').focus();
+  $('btPinNo').onclick = closeOverlay;
+  var check = function () {
+    if (btPinHash($('btPin').value.trim()) !== BT_PIN_HASH) {
+      $('btPinMsg').textContent = '비밀번호가 달라요.';
+      $('btPin').value = '';
+      $('btPin').focus();
+      return;
+    }
+    try { localStorage.setItem(BT_TEACHER_KEY, String(BT_PIN_HASH)); } catch (e) { /* 저장이 안 되면 다음에 또 물어봄 */ }
+    closeOverlay();
+    btOpenTeacher();
+  };
+  $('btPinOk').onclick = check;
+  $('btPin').onkeydown = function (e) { if (e.key === 'Enter') check(); };
 }
 
 function btTOff() {
