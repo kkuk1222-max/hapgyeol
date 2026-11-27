@@ -37,11 +37,7 @@ var BT_SAVE = 'hapgyeol-battle-v1';   // 이 크롬북이 들어가 있는 방 �
 /* 선생님 화면 비밀번호 (2026-11-25). 비밀번호 자체는 적지 않고, 바꾼 값만 적어 둔다.
    비밀번호를 바꾸려면 btPinHash('새 비밀번호')의 값을 BT_PIN_HASH에 넣는다 */
 var BT_PIN_HASH = 303083462;
-var BT_TEACHER_KEY = 'hapgyeol-teacher-v1';   // 이 기기에서 비밀번호를 맞게 넣었는지
 function btPinHash(pin) { return strHash('hapgyeol-teacher:' + pin, 1000000007); }
-function btTeacherOk() {
-  try { return localStorage.getItem(BT_TEACHER_KEY) === String(BT_PIN_HASH); } catch (e) { return false; }
-}
 
 var bt = {
   ok: false, db: null, offset: 0,
@@ -881,10 +877,10 @@ function btStuClick(e) {
 /* =========================================================
    선생님 화면 (Ctrl + Alt + B)
    ========================================================= */
-function btOpenTeacher() {
+function btOpenTeacher(pinOk) {
   if (!bt.ok) { alert('대결 모드는 인터넷과 링크(GitHub Pages)에서만 열려요.'); return; }
   if (typeof game !== 'undefined' && game && !game.over) return;
-  if (!btTeacherOk()) { btAskPin(); return; }   // 이 기기에서 처음이면 비밀번호 묻기
+  if (pinOk !== true) { btAskPin(); return; }   // 열 때마다 비밀번호 묻기
   stopRefill();
   closeOverlay();
   btTOff();
@@ -893,12 +889,12 @@ function btOpenTeacher() {
   btTList();
 }
 
-/* 선생님 비밀번호 묻기. 맞게 넣으면 이 기기에서는 다시 묻지 않는다 */
+/* 선생님 비밀번호 묻기. 기억하지 않고 선생님 화면을 열 때마다 묻는다 */
 function btAskPin() {
   openOverlay(
     '<h2>선생님 확인</h2>' +
     '<p class="ov-text">대결 방을 관리하는 선생님 화면이에요. 비밀번호를 넣어 주세요.</p>' +
-    '<div class="form-row"><label for="btPin">비밀번호</label><input id="btPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></div>' +
+    '<div class="form-row"><label for="btPin">비밀번호</label><input id="btPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div>' +
     '<p class="msg bad" id="btPinMsg"></p>' +
     '<div class="ov-buttons"><button id="btPinNo">닫기</button><div class="right"><button id="btPinOk" class="btn-main">확인</button></div></div>'
   );
@@ -911,9 +907,8 @@ function btAskPin() {
       $('btPin').focus();
       return;
     }
-    try { localStorage.setItem(BT_TEACHER_KEY, String(BT_PIN_HASH)); } catch (e) { /* 저장이 안 되면 다음에 또 물어봄 */ }
     closeOverlay();
-    btOpenTeacher();
+    btOpenTeacher(true);
   };
   $('btPinOk').onclick = check;
   $('btPin').onkeydown = function (e) { if (e.key === 'Enter') check(); };
