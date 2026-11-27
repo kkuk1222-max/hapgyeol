@@ -19,7 +19,8 @@ var FIREBASE_CONFIG = {
 var BT = {
   TURN_SEC: 40,     // 한 차례 제한 시간 (Q19-1)
   TOUT_END: 6,      // 두 학생이 연달아 3번씩(모두 6번) 시간 초과하면 판 끝 (Q19-3)
-  BOARDS: 4,        // 한 경기 판 수, 짝수여야 선이 공평 (Q19-5, 2026-11-25 2판 → 4판)
+  BOARDS: 2,        // 예선(스위스) 한 경기 판 수, 짝수여야 선이 공평 (Q19-5, 2026-11-25 2판 → 4판, 2026-11-27 4판 → 2판)
+  BOARDS_FINAL: 4,  // 4강·결승 한 경기 판 수 (2026-11-27)
   ZERO_RATE: 0.2,   // 합 0개 판 비율 (Q18-5)
   COIN_SEC: 10,     // 동전 고르기 (Q19-2)
   TB_SEC: 60,       // 결정판 (Q19-11)
@@ -28,8 +29,8 @@ var BT = {
   DISC_SEC: 60,     // 연결이 끊긴 학생을 기다리는 시간 (Q18-7)
   SHOW_MS: 4000,    // 동전 결과, 판 끝, 결정판 공개를 보여 주는 시간
   FX_MS: 3000,      // 방금 고른 3장의 테두리를 보여 주는 시간
-  ROUNDS: 3,        // 스위스 라운드 기본값 (Q19-12, 2026-11-25 4 → 3)
-  ROUND_CHOICES: [2, 3],   // 선생님 화면의 라운드 수 버튼
+  ROUNDS: 4,        // 스위스 라운드 기본값 (Q19-12, 2026-11-25 4 → 3, 2026-11-27 3 → 4)
+  ROUND_CHOICES: [2, 3, 4],   // 선생님 화면의 라운드 수 버튼
   KEEP_DAYS: 14     // 오래된 방 자동 삭제 (Q20-5)
 };
 var BT_SAVE = 'hapgyeol-battle-v1';   // 이 크롬북이 들어가 있는 방 번호
@@ -84,7 +85,7 @@ function btNorm(m) {
   m.sc = m.sc || [0, 0];
   m.pen = m.pen || [0, 0];
   m.bs = m.bs || [];
-  for (var i = 0; i < BT.BOARDS; i++) if (!m.bs[i]) m.bs[i] = [0, 0];
+  for (var i = 0; i < btNB(m); i++) if (!m.bs[i]) m.bs[i] = [0, 0];
   m.p = m.p || [];
   m.nm = m.nm || [];
   if (m.coin) m.coin.pick = m.coin.pick || ['', ''];
@@ -126,14 +127,18 @@ function btEvent(m, o) {
 /* =========================================================
    경기 규칙 (모든 기기가 같은 규칙으로 서버 값을 바꾼다)
    ========================================================= */
-function btZeros() { var a = []; for (var i = 0; i < BT.BOARDS; i++) a.push([0, 0]); return a; }
+function btZeros(n) { var a = []; for (var i = 0; i < n; i++) a.push([0, 0]); return a; }
+
+/* 이 경기의 판 수 (예선 2판, 4강·결승 4판). nb가 없는 예전 경기는 4판 */
+function btNB(m) { return m.nb || 4; }
 
 function btNewMatch(kind, round, a, b, t, seat) {
+  var nb = kind === 'swiss' ? BT.BOARDS : BT.BOARDS_FINAL;
   var m = {
     kind: kind, round: round,
     p: [a.pid, b.pid], nm: [a.id + ' ' + a.name, b.id + ' ' + b.name],
     ph: 'coin', coin: { pick: ['', ''], dl: t + BT.COIN_SEC * 1000 },
-    sc: [0, 0], pen: [0, 0], bs: btZeros(), bn: 0, ev: 0, created: t
+    sc: [0, 0], pen: [0, 0], bs: btZeros(nb), nb: nb, bn: 0, ev: 0, created: t
   };
   if (seat) m.seat = seat;
   return m;
@@ -347,7 +352,7 @@ function btCheck(code, mid, m, online) {
   } else if (m.ph === 'bend' && t >= m.nextAt) {
     fire(function (x, t2) {
       if (x.ph !== 'bend' || t2 < x.nextAt) return;
-      if (x.bn < BT.BOARDS) {
+      if (x.bn < btNB(x)) {
         x.bn++;
         btBoard(x, t2, (x.first + x.bn - 1) % 2);   // 판마다 선을 번갈아 (Q19-4)
         btEvent(x, { t: 'start' });
@@ -447,7 +452,7 @@ function btGameHtml(m, v, big) {
   var turnIdx = m.ph === 'play' ? m.b.turn : (m.ph === 'tb' && m.tb.buzz.by >= 0 ? m.tb.buzz.by : -1);
 
   // 가운데 줄: 판 · 차례 · 시간
-  var label = btKindLabel(m) + ' · ' + (isTb ? '결정판 ' + m.tb.n + '번째 · 합이 딱 1개!' : m.bn + '판 / ' + BT.BOARDS + '판');
+  var label = btKindLabel(m) + ' · ' + (isTb ? '결정판 ' + m.tb.n + '번째 · 합이 딱 1개!' : m.bn + '판 / ' + btNB(m) + '판');
   var turnTx = '', turnCls = '';
   if (m.ph === 'play') {
     turnCls = btSide(m.b.turn, v);
@@ -569,7 +574,7 @@ function btResultHtml(m, v) {
   var a = v === 1 ? 1 : 0, b = 1 - a;
   var row = function (lab, x, y, bold) { return '<tr><td>' + lab + '</td><td>' + (bold ? '<b>' + x + '</b>' : x) + '</td><td>' + (bold ? '<b>' + y + '</b>' : y) + '</td></tr>'; };
   var tbl = '<table class="t-table"><tr><th></th><th>' + (v < 0 ? btEsc(btShort(m.nm[a])) : '나') + '</th><th>' + btEsc(btShort(m.nm[b])) + '</th></tr>';
-  for (var i = 0; i < BT.BOARDS; i++) tbl += row((i + 1) + '판', m.bs[i][a], m.bs[i][b]);
+  for (var i = 0; i < btNB(m); i++) tbl += row((i + 1) + '판', m.bs[i][a], m.bs[i][b]);
   tbl += row('<b>합계</b>', m.sc[a], m.sc[b], true) + row('<span style="color:var(--muted)">감점</span>', m.pen[a], m.pen[b]) + '</table>';
   var h = '<div class="card bt-center"><span class="bt-tag">' + btKindLabel(m) + '</span>' +
     '<h2 style="font-size:32px;margin:10px 0 4px;color:' + (v < 0 || w === v ? 'var(--blue)' : 'var(--muted)') + '">' + title + '</h2>' +
@@ -1160,7 +1165,7 @@ function btTGames(R) {
       '<div class="t-code">' + bt.tcode + '</div>' +
       '<h3 style="margin:16px 0 4px">들어온 학생 <b style="color:#2e7d32">' + on.length + '명</b> <small style="color:var(--muted);font-weight:normal">/ 회색: 연결 안 됨</small></h3>' +
       '<div class="t-chips">' + (chips || '<span style="color:var(--muted)">아직 아무도 없어요</span>') + '</div>' +
-      '<div class="t-row"><b>라운드 수</b>' + seg + '<span style="color:var(--muted);font-size:14px">한 경기(' + BT.BOARDS + '판) 약 10~12분 · 3라운드 약 35분 · 2라운드 약 25분</span></div>' +
+      '<div class="t-row"><b>라운드 수</b>' + seg + '<span style="color:var(--muted);font-size:14px">한 경기 ' + BT.BOARDS + '판 · 한 라운드 넉넉히 약 15분 · 4라운드는 두 시간에 나눠 해도 돼요</span></div>' +
       '<div class="t-foot"><button data-act="tClose">방 닫기 (기록 삭제)</button><button class="btn-main" style="font-size:18px;padding:10px 22px" data-act="tStart">1라운드 시작</button></div>';
   }
 
@@ -1257,7 +1262,7 @@ function btTFinal(R) {
   else foot += '<button data-act="tClose">방 닫기 (기록 삭제)</button>';
   return html +
     (champ ? '<p style="text-align:center;font-size:28px;font-weight:bold;margin:18px 0 0">🏆 우승: ' + btEsc(champ) + '</p>' : '') +
-    '<p class="lg-note">결승에 나가는 학생만 같은 방 번호(' + bt.tcode + ')로 들어와 있으면 돼요. 경기 규칙은 보통 경기와 같아요 (' + BT.BOARDS + '판 합산 → 감점 → 결정판).<br>시작하면 바로 관전 화면을 띄울 수 있어요.</p>' +
+    '<p class="lg-note">결승에 나가는 학생만 같은 방 번호(' + bt.tcode + ')로 들어와 있으면 돼요. 경기 규칙은 예선과 같고, 판만 ' + BT.BOARDS_FINAL + '판이에요 (' + BT.BOARDS_FINAL + '판 합산 → 감점 → 결정판).<br>시작하면 바로 관전 화면을 띄울 수 있어요.</p>' +
     '<div class="t-foot">' + foot + '</div>';
 }
 
